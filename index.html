@@ -1,0 +1,3137 @@
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>微信话费充值体验优化项目方案(v4.3)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 基础重置 & 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        }
+        :root {
+            --primary-color: #07c160;
+            --primary-light: #f0fff4;
+            --primary-dark: #06b356;
+            --text-primary: #000000;
+            --text-secondary: #333333;
+            --text-tertiary: #666666;
+            --text-quaternary: #999999;
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #fafafa;
+            --border-color: #e5e5e5;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
+            --shadow-primary: 0 2px 8px rgba(7,193,96,0.3);
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .dark-mode {
+            --primary-color: #07c160;
+            --primary-light: #1a2e24;
+            --primary-dark: #06b356;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --text-tertiary: #b0b0b0;
+            --text-quaternary: #808080;
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --bg-tertiary: #252525;
+            --border-color: #333333;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+            --shadow-lg: 0 4px 16px rgba(0,0,0,0.5);
+            --shadow-primary: 0 2px 8px rgba(7,193,96,0.4);
+        }
+        /* 全局对齐和重置 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            height: 100%;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding-bottom: 80px;
+            font-size: 14px;
+            position: relative;
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 加载动画 */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+        .loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loader-icon {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 顶部导航栏（强化微信原生风格） */
+        .wechat-header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            transition: background-color var(--transition-normal), border-color var(--transition-normal);
+        }
+        .wechat-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            flex: 1;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .header-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+        .header-btn:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--primary-color);
+        }
+
+        /* 侧边目录导航（新增） */
+        .side-nav {
+            position: fixed;
+            top: 80px;
+            right: 10px;
+            z-index: 90;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            padding: 8px 0;
+            width: 60px;
+            display: none;
+            transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
+        }
+        .side-nav-item {
+            padding: 8px 0;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            transition: all var(--transition-fast);
+        }
+        .side-nav-item.active, .side-nav-item:hover {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+        .side-nav-item i {
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* 返回顶部按钮（新增） */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-primary);
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast);
+            z-index: 90;
+        }
+        .back-to-top.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 主容器 & 卡片（优化视觉层级） */
+        .wechat-container {
+            max-width: 750px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+        .wechat-card {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-normal);
+            transform: translateY(0);
+        }
+        .wechat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        /* 目标卡片强化渐变 */
+        .goal-card {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #e6fffa 100%);
+            border: 1px solid #c6e5d9;
+            position: relative;
+            overflow: hidden;
+        }
+        .dark-mode .goal-card {
+            border: 1px solid #2a5a40;
+        }
+        .goal-card::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 120px;
+            height: 120px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2307c160' opacity='0.1'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-0.49-7-3.85-7-7.93 0-0.62 0.08-1.21 0.21-1.79L9 15v1c0 1.1 0.9 2 2 2v1.93zm6.9-2.54c-0.26-0.81-1-1.39-1.9-1.39h-1v-3c0-0.55-0.45-1-1-1H8v-2h2c0.55 0 1-0.45 1-1V7h2c1.1 0 2-0.9 2-2v-0.41c2.93 1.19 5 4.06 5 7.41 0 2.08-0.8 3.97-2.1 5.39z'%3E%3C/path%3E%3C/svg%3E") no-repeat;
+            background-size: contain;
+            z-index: 0;
+        }
+
+        /* 标题样式（优化图标对齐） */
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+            transition: color var(--transition-normal), border-color var(--transition-normal);
+        }
+        .card-title-left {
+            display: flex;
+            align-items: center;
+        }
+        .card-title i {
+            color: var(--primary-color);
+            margin-right: 8px;
+            font-size: 18px;
+        }
+        .collapse-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .collapse-btn:hover {
+            color: var(--primary-color);
+        }
+        .collapse-btn.rotated {
+            transform: rotate(180deg);
+        }
+        .card-content {
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            transition: max-height var(--transition-normal), opacity var(--transition-normal);
+        }
+        .card-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 文本 & 列表样式（优化行高和间距） */
+        .card-content p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            line-height: 1.8;
+            transition: color var(--transition-normal);
+        }
+        .card-content strong {
+            color: var(--text-primary);
+            font-weight: 600;
+            transition: color var(--transition-normal);
+        }
+        .wechat-list {
+            margin-left: 0;
+            margin-bottom: 20px;
+            list-style: none;
+        }
+        .wechat-list li {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            line-height: 1.9;
+            position: relative;
+            padding: 16px 20px 16px 56px;
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, transparent 100%);
+            border-radius: 16px;
+            border-left: 4px solid var(--primary-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .wechat-list li:hover {
+            transform: translateX(8px);
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.08) 0%, transparent 100%);
+            box-shadow: 0 4px 15px rgba(7, 193, 96, 0.1);
+        }
+        .wechat-list li:before {
+            content: "✓";
+            color: var(--primary-color);
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 900;
+            font-size: 18px;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.15) 0%, rgba(7, 193, 96, 0.05) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 嵌套列表优化 */
+        .wechat-list li ul {
+            margin-left: 0;
+            margin-top: 12px;
+            list-style: none;
+        }
+        .wechat-list li ul li {
+            padding: 12px 16px 12px 48px;
+            font-size: 14px;
+            border-radius: 12px;
+            border-left: 3px solid #1890ff;
+            background: linear-gradient(135deg, rgba(24, 144, 255, 0.06) 0%, transparent 100%);
+        }
+        .wechat-list li ul li:before {
+            content: "▹";
+            color: #1890ff;
+            left: 14px;
+            font-size: 16px;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, rgba(24, 144, 255, 0.12) 0%, rgba(24, 144, 255, 0.04) 100%);
+        }
+        .wechat-list li ul li:hover {
+            transform: translateX(6px);
+            background: linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, transparent 100%);
+            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.1);
+        }
+
+        /* 表格样式（强化微信原生感） */
+        .wechat-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow var(--transition-normal);
+        }
+        .wechat-table th, .wechat-table td {
+            border: 1px solid var(--border-color);
+            padding: 12px 10px;
+            text-align: left;
+            transition: background-color var(--transition-normal), border-color var(--transition-normal), color var(--transition-normal);
+        }
+        .wechat-table th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-tertiary);
+        }
+        .wechat-table tr:nth-child(even) td {
+            background-color: var(--bg-tertiary);
+        }
+        .wechat-table tr:hover td {
+            background-color: rgba(7, 193, 96, 0.05);
+            transition: background 0.2s;
+        }
+        .dark-mode .wechat-table tr:hover td {
+            background-color: rgba(7, 193, 96, 0.1);
+        }
+
+        /* 提示框样式（优化图标和间距） */
+        .wechat-tip {
+            background-color: var(--bg-tertiary);
+            border-left: 3px solid var(--primary-color);
+            padding: 14px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 16px 0;
+            font-size: 15px;
+            color: var(--text-secondary);
+            position: relative;
+            line-height: 1.7;
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+        .wechat-tip:before {
+            content: "\f0eb";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: var(--primary-color);
+            position: absolute;
+            left: -10px;
+            top: 14px;
+            background-color: var(--bg-tertiary);
+            padding-right: 5px;
+            transition: background-color var(--transition-normal);
+        }
+
+        /* 按钮样式（优化点击反馈） */
+        .wechat-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            padding: 9px 18px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: 500;
+            text-decoration: none;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: 0 1px 3px rgba(7, 193, 96, 0.2);
+            touch-action: manipulation;
+        }
+        .wechat-btn i {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+        .wechat-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-primary);
+        }
+        .wechat-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(7, 193, 96, 0.2);
+        }
+        .wechat-btn.gray {
+            background-color: var(--border-color);
+            color: var(--text-tertiary);
+            box-shadow: none;
+        }
+        .wechat-btn.gray:hover {
+            background-color: #d9d9d9;
+        }
+        .dark-mode .wechat-btn.gray:hover {
+            background-color: #444444;
+        }
+
+        /* 里程碑样式（优化视觉） */
+        .milestone-container {
+            margin: 20px 0;
+            position: relative;
+            padding-left: 16px;
+        }
+        .milestone-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 15px;
+            height: 100%;
+            width: 1px;
+            background: var(--border-color);
+            z-index: 1;
+            transition: background-color var(--transition-normal);
+        }
+        .milestone {
+            display: flex;
+            align-items: flex-start;
+            position: relative;
+            margin-bottom: 20px;
+            z-index: 2;
+        }
+        .milestone-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 14px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-primary);
+            transition: all var(--transition-normal);
+        }
+        .milestone-icon.future {
+            background-color: var(--border-color);
+            color: var(--text-quaternary);
+            box-shadow: none;
+        }
+        .milestone-content {
+            flex-grow: 1;
+        }
+        .milestone-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            transition: color var(--transition-normal);
+        }
+        .milestone-desc {
+            color: var(--text-tertiary);
+            font-size: 14px;
+            transition: color var(--transition-normal);
+        }
+
+        /* 聊天容器（优化气泡和动画） */
+        .chat-container {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 16px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: var(--bg-tertiary);
+            transition: background-color var(--transition-normal), border-color var(--transition-normal);
+        }
+        .chat-message {
+            margin-bottom: 14px;
+            max-width: 75%;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-user {
+            text-align: right;
+            margin-left: auto;
+        }
+        .chat-agent {
+            text-align: left;
+            margin-right: auto;
+        }
+        .chat-bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            position: relative;
+            line-height: 1.7;
+        }
+        .chat-user .chat-bubble {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border-bottom-right-radius: 6px;
+        }
+        .chat-agent .chat-bubble {
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 6px;
+            transition: background-color var(--transition-normal), border-color var(--transition-normal), color var(--transition-normal);
+        }
+        .chat-time {
+            font-size: 12px;
+            color: var(--text-quaternary);
+            margin-top: 5px;
+            transition: color var(--transition-normal);
+        }
+
+        /* 弹窗样式（优化动画和交互） */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 199;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .wechat-popup {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-secondary);
+            border-radius: 16px 16px 0 0;
+            padding: 20px 16px;
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+            z-index: 200;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 80vh;
+            overflow-y: auto;
+            transition: background-color var(--transition-normal), transform var(--transition-normal), box-shadow var(--transition-normal);
+        }
+        .wechat-popup.show {
+            transform: translateY(0);
+        }
+        .popup-header {
+            text-align: center;
+            margin-bottom: 18px;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+            position: relative;
+            transition: color var(--transition-normal);
+        }
+        .popup-close {
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+        .popup-close:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .popup-btns {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            gap: 12px;
+        }
+        .popup-btns button {
+            flex: 1;
+            padding: 11px 0;
+            font-size: 16px;
+            border-radius: 8px;
+        }
+
+        /* 数据可视化样式 */
+        .chart-container {
+            position: relative;
+            height: 280px;
+            margin: 20px 0;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            transition: background-color var(--transition-normal);
+        }
+        .chart-title {
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            transition: color var(--transition-normal);
+        }
+
+        /* 标签样式 */
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .tag-primary {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+        .tag-success {
+            background-color: #e6f7ff;
+            color: #1890ff;
+        }
+        .tag-warning {
+            background-color: #fff7e6;
+            color: #fa8c16;
+        }
+        .tag-danger {
+            background-color: #fff1f0;
+            color: #f5222d;
+        }
+        .dark-mode .tag-primary {
+            background-color: #1a2e24;
+        }
+        .dark-mode .tag-success {
+            background-color: #1a2a3a;
+        }
+        .dark-mode .tag-warning {
+            background-color: #3a2a1a;
+        }
+        .dark-mode .tag-danger {
+            background-color: #3a1a1a;
+        }
+
+        /* 深色模式下关键词高亮样式 */
+        .dark-mode .highlight-keyword {
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.2) 0%, rgba(7, 193, 96, 0.1) 100%);
+            border: 1px solid rgba(7, 193, 96, 0.3);
+        }
+
+        /* 深色模式下数据卡片优化 */
+        .dark-mode .data-card {
+            background: linear-gradient(145deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+        }
+        .dark-mode .stat-highlight::before {
+            opacity: 0.4;
+        }
+        .dark-mode .chart-container-enhanced {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 
+                        0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 入场动画 */
+        @keyframes slideUpFade {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .data-card {
+            animation: slideUpFade 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+        .data-card:nth-child(1) { animation-delay: var(--delay, 0.1s); }
+        .data-card:nth-child(2) { animation-delay: var(--delay, 0.2s); }
+        .data-card:nth-child(3) { animation-delay: var(--delay, 0.3s); }
+        .data-card:nth-child(4) { animation-delay: var(--delay, 0.4s); }
+
+        /* 流程图样式 - 优化对齐 */
+        .flow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 20px;
+        }
+        .flow-step {
+            flex: 0 0 auto;
+            width: 140px;
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .flow-step-icon {
+            width: 70px;
+            height: 70px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 28px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(7, 193, 96, 0.3);
+        }
+        .flow-step-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.3;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+        }
+        .flow-step-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .flow-arrow {
+            color: var(--primary-color);
+            font-size: 28px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            animation: arrowPulse 2s ease-in-out infinite;
+        }
+        @keyframes arrowPulse {
+            0%, 100% { transform: translateX(0); opacity: 1; }
+            50% { transform: translateX(5px); opacity: 0.6; }
+        }
+
+        /* 前后对比流程图 - 更直观的设计 */
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 30px 0;
+        }
+        .comparison-side {
+            padding: 25px;
+            border-radius: 16px;
+            position: relative;
+        }
+        .comparison-side.old {
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+            border: 2px solid #ddd;
+        }
+        .dark-mode .comparison-side.old {
+            background: linear-gradient(135deg, #2a2a2a, #333);
+            border-color: #444;
+        }
+        .comparison-side.new {
+            background: linear-gradient(135deg, #e6f7ee, #ccf2e0);
+            border: 2px solid #07c160;
+        }
+        .dark-mode .comparison-side.new {
+            background: linear-gradient(135deg, #1a3a2a, #0f2a1a);
+            border-color: #07c160;
+        }
+        .comparison-label {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 14px;
+        }
+        .comparison-side.old .comparison-label {
+            background: #666;
+            color: white;
+        }
+        .comparison-side.new .comparison-label {
+            background: linear-gradient(135deg, #07c160, #05a04d);
+            color: white;
+            box-shadow: 0 4px 15px rgba(7, 193, 96, 0.3);
+        }
+        .comparison-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            margin-top: 10px;
+        }
+        .comparison-side.old .comparison-title {
+            color: #666;
+        }
+        .comparison-side.new .comparison-title {
+            color: #07c160;
+        }
+        .comparison-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .comparison-step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        .comparison-step:hover {
+            transform: translateX(5px);
+        }
+        .comparison-side.old .comparison-step {
+            border-left-color: #999;
+        }
+        .comparison-side.new .comparison-step {
+            border-left-color: #07c160;
+        }
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .comparison-side.old .step-number {
+            background: #ddd;
+            color: #666;
+        }
+        .comparison-side.new .step-number {
+            background: linear-gradient(135deg, #07c160, #05a04d);
+            color: white;
+        }
+        .step-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        .comparison-summary {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .comparison-side.old .comparison-summary {
+            background: rgba(153, 153, 153, 0.1);
+        }
+        .comparison-side.new .comparison-summary {
+            background: rgba(7, 193, 96, 0.1);
+        }
+        .summary-value {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 5px;
+        }
+        .comparison-side.old .summary-value {
+            color: #ff4d4f;
+        }
+        .comparison-side.new .summary-value {
+            color: #07c160;
+        }
+        .summary-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+            .flow-arrow {
+                display: none;
+            }
+            .flow-step {
+                width: 130px;
+            }
+        }
+
+        /* 能力卡片样式 */
+        .ability-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .ability-card {
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 3px solid var(--primary-color);
+            transition: all var(--transition-fast);
+        }
+        .ability-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .ability-card-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .ability-card-title i {
+            color: var(--primary-color);
+            margin-right: 8px;
+        }
+        .ability-card-content {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* 项目核心目标卡片字体优化 */
+        .goal-card .card-content p:first-child {
+            font-size: 18px;
+            line-height: 2.0;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+        }
+        .goal-card .card-content p:last-child {
+            font-size: 15px;
+            line-height: 1.8;
+            font-weight: 500;
+        }
+
+        /* 关键词视觉突出样式 */
+        .highlight-keyword {
+            font-size: 20px;
+            font-weight: 700;
+            color: #07c160;
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.1) 0%, rgba(7, 193, 96, 0.05) 100%);
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin: 0 2px;
+            display: inline-block;
+            border: 1px solid rgba(7, 193, 96, 0.2);
+            box-shadow: 0 2px 4px rgba(7, 193, 96, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .highlight-keyword:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(7, 193, 96, 0.2);
+        }
+
+        /* 关键数字突出样式 - 豪华升级版 */
+        .stat-number {
+            font-size: 26px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #07c160 0%, #06b356 50%, #05a04d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+            padding: 6px 16px;
+            position: relative;
+            margin: 0 6px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: floatNumber 3s ease-in-out infinite;
+        }
+        .stat-number::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(7, 193, 96, 0.08) 0%, rgba(7, 193, 96, 0.03) 100%);
+            border-radius: 12px;
+            border: 2px solid rgba(7, 193, 96, 0.2);
+            z-index: -1;
+            box-shadow: 0 4px 15px rgba(7, 193, 96, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+        .stat-number:hover {
+            transform: scale(1.15) translateY(-3px);
+        }
+        @keyframes floatNumber {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .stat-unit {
+            font-size: 17px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b356 0%, #05a04d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-left: 3px;
+        }
+        .stat-highlight {
+            background: linear-gradient(135deg, rgba(255, 214, 0, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%);
+            border: 1px solid rgba(255, 165, 0, 0.3);
+            border-left: 5px solid #ffa500;
+            padding: 16px 24px;
+            border-radius: 0 16px 16px 0;
+            margin: 16px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(255, 165, 0, 0.08);
+        }
+        .stat-highlight::before {
+            content: '💡';
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            font-size: 28px;
+            opacity: 0.6;
+        }
+        .stat-highlight strong {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8800 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+        }
+
+        /* 增强的图表容器样式 - 豪华升级版 */
+        .chart-container-enhanced {
+            position: relative;
+            height: 460px;
+            margin: 24px 0;
+            background: linear-gradient(145deg, var(--bg-secondary) 0%, var(--bg-tertiary) 50%, var(--bg-secondary) 100%);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 
+                        0 2px 8px rgba(0, 0, 0, 0.04),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+        }
+        .chart-container-enhanced::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #07c160, #1890ff, #07c160);
+            background-size: 200% 100%;
+            animation: gradientMove 3s linear infinite;
+        }
+        @keyframes gradientMove {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .chart-container-enhanced:hover {
+            box-shadow: 0 15px 50px rgba(7, 193, 96, 0.12), 
+                        0 5px 15px rgba(0, 0, 0, 0.06);
+            transform: translateY(-4px);
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px dashed var(--border-color);
+            position: relative;
+        }
+        .chart-title-enhanced {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chart-title-enhanced::before {
+            content: '📊';
+            font-size: 24px;
+            -webkit-text-fill-color: initial;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            background: var(--bg-tertiary);
+            padding: 6px;
+            border-radius: 50px;
+            border: 1px solid var(--border-color);
+        }
+        .chart-control-btn {
+            padding: 8px 18px;
+            border-radius: 50px;
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        .chart-control-btn:hover {
+            color: var(--primary-color);
+            background: rgba(7, 193, 96, 0.08);
+        }
+        .chart-control-btn.active {
+            background: linear-gradient(135deg, #07c160 0%, #06b356 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
+        }
+
+        /* 数据卡片展示 - 豪华升级版 */
+        .data-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .data-card {
+            background: linear-gradient(145deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            padding: 28px 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        }
+        .data-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #07c160, #1890ff, #fa8c16);
+            background-size: 200% 100%;
+            animation: gradientMove 3s linear infinite;
+        }
+        .data-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(7, 193, 96, 0.05) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .data-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(7, 193, 96, 0.15), 
+                        0 8px 20px rgba(0, 0, 0, 0.08);
+            border-color: rgba(7, 193, 96, 0.3);
+        }
+        .data-card:hover::after {
+            opacity: 1;
+        }
+        .data-card-value {
+            font-size: 40px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #07c160 0%, #06b356 50%, #05a04d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 12px 0;
+            position: relative;
+            display: inline-block;
+            animation: valueFloat 4s ease-in-out infinite;
+        }
+        @keyframes valueFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .data-card-value::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #07c160, transparent);
+            border-radius: 2px;
+        }
+        .data-card-label {
+            font-size: 15px;
+            color: var(--text-secondary);
+            font-weight: 700;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+        .data-card-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            margin-top: 10px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        /* 时间轴样式 - 完全对齐优化 */
+        .timeline-container {
+            position: relative;
+            padding: 20px 0;
+        }
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            left: 80px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to bottom, #07c160, #1890ff, #fa8c16);
+            border-radius: 2px;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-30px);
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .timeline-item.animate {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .timeline-year {
+            min-width: 100px;
+            width: 100px;
+            height: 60px;
+            padding: 0;
+            text-align: center;
+            background: linear-gradient(135deg, #07c160, #05a04d);
+            color: white;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(7, 193, 96, 0.3);
+            z-index: 10;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .timeline-year::before {
+            content: '';
+            position: absolute;
+            right: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background: #07c160;
+            border-radius: 50%;
+            border: 4px solid var(--bg-primary);
+            box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.3);
+        }
+        .timeline-content {
+            margin-left: 30px;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            padding: 20px 24px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            flex: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .timeline-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #07c160, #1890ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .timeline-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* 滚动动画指示器 */
+        .scroll-indicator {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #07c160, #05a04d);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(7, 193, 96, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            animation: bounce 2s infinite;
+        }
+        .scroll-indicator:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(7, 193, 96, 0.5);
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        /* 滚动进度条 */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #07c160, #1890ff, #fa8c16);
+            z-index: 9999;
+            transform-origin: left;
+            transition: transform 0.1s ease;
+        }
+
+        /* 卡片悬停放大效果 */
+        .wechat-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .wechat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 数字计数动画 */
+        .counter {
+            display: inline-block;
+        }
+
+        /* 粒子效果容器 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(7, 193, 96, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        /* 响应式调整关键词大小 */
+        @media (max-width: 375px) {
+            .highlight-keyword {
+                font-size: 17px;
+                padding: 3px 8px;
+            }
+            .goal-card .card-content p:first-child {
+                font-size: 16px;
+                line-height: 1.9;
+            }
+            .stat-number {
+                font-size: 20px;
+                padding: 3px 10px;
+            }
+            .data-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 响应式适配（强化移动端） */
+        @media (min-width: 480px) {
+            .side-nav {
+                display: block;
+            }
+        }
+        @media (max-width: 375px) {
+            .chat-message {
+                max-width: 85%;
+            }
+            .wechat-btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+            .wechat-table th, .wechat-table td {
+                padding: 8px 6px;
+                font-size: 13px;
+            }
+            .card-content p, .wechat-list li {
+                font-size: 14px;
+            }
+            .chart-container {
+                height: 250px;
+            }
+            .ability-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 打印样式 */
+        @media print {
+            .wechat-header, .side-nav, .back-to-top, .popup-overlay, .wechat-popup, .header-actions, .collapse-btn {
+                display: none !important;
+            }
+            body {
+                background-color: white;
+                color: black;
+                padding: 0;
+            }
+            .wechat-container {
+                max-width: 100%;
+                padding: 0;
+            }
+            .wechat-card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+            }
+            .goal-card {
+                background: white;
+                border: 1px solid #ccc;
+            }
+            .goal-card::after {
+                display: none;
+            }
+            .card-content {
+                max-height: none !important;
+                opacity: 1 !important;
+            }
+            .chart-container {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载动画（已优化） -->
+    <div class="loader" id="loader">
+        <div class="loader-icon"></div>
+    </div>
+
+    <!-- 顶部导航栏 -->
+    <div class="wechat-header">
+        <h1>微信话费充值体验优化项目方案(v4.3)</h1>
+        <div class="header-actions">
+            <button class="header-btn" id="darkModeBtn" title="切换深色模式">
+                <i class="fas fa-moon"></i>
+            </button>
+            <button class="header-btn" id="printBtn" title="打印方案">
+                <i class="fas fa-print"></i>
+            </button>
+            <button class="header-btn" id="shareBtn" title="分享方案">
+                <i class="fas fa-share-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 侧边目录导航 -->
+    <div class="side-nav">
+        <div class="side-nav-item active" data-target="goal-card">
+            <i class="fas fa-bullseye"></i>
+            目标
+        </div>
+        <div class="side-nav-item" data-target="section-1">
+            <i class="fas fa-info-circle"></i>
+            背景
+        </div>
+        <div class="side-nav-item" data-target="section-2">
+            <i class="fas fa-chart-line"></i>
+            KPI
+        </div>
+        <div class="side-nav-item" data-target="section-3">
+            <i class="fas fa-users"></i>
+            用户
+        </div>
+        <div class="side-nav-item" data-target="section-4">
+            <i class="fas fa-robot"></i>
+            Agent
+        </div>
+        <div class="side-nav-item" data-target="section-5">
+            <i class="fas fa-bullhorn"></i>
+            运营
+        </div>
+        <div class="side-nav-item" data-target="section-6">
+            <i class="fas fa-rocket"></i>
+            展望
+        </div>
+    </div>
+
+    <!-- 返回顶部按钮 -->
+    <div class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <!-- 主内容容器 -->
+    <div class="wechat-container">
+        <!-- 项目目标卡片 -->
+        <div class="wechat-card goal-card" id="goal-card">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-bullseye"></i>项目核心目标
+                </div>
+                <button class="collapse-btn" data-target="goal-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="goal-content">
+                <p>在微信生态内，打造<span class="highlight-keyword">又快</span>、<span class="highlight-keyword">又省心</span>、<span class="highlight-keyword">又更划算</span>的话费充值体验，建立以<strong style="color: var(--primary-color); font-size: 20px; font-weight: 700;">智能化(Agent)</strong>为核心的可持续增长与变现能力。</p>
+                <p style="margin-top: 12px; color: var(--text-tertiary);">
+                    <i class="fas fa-lightbulb" style="color: var(--primary-color); margin-right: 6px;"></i>
+                    <strong>核心原则：</strong>以用户体验为中心，通过AI Agent降低操作成本，提升充值转化率与用户留存
+                </p>
+            </div>
+        </div>
+
+        <!-- 背景与立项依据卡片 -->
+        <div class="wechat-card" id="section-1">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-info-circle"></i>1. 背景与立项依据
+                </div>
+                <button class="collapse-btn" data-target="section1-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section1-content">
+                <p><strong>行业趋势</strong></p>
+                <ul class="wechat-list">
+                    <li>2024年中国移动通信用户总数达到<span class="stat-number">11.8<span class="stat-unit">亿户</span></span>，其中智能手机用户占比超过<span class="stat-number">98<span class="stat-unit">%</span></span></li>
+                    <li>30岁以上高价值用户对"自动化、省时、透明优惠"的需求同比提升<span class="stat-number">40<span class="stat-unit">%</span></span>，成为核心增量群体</li>
+                    <li>AI Agent技术成熟度提升，可支撑个性化提醒、智能推荐与全流程对话式服务</li>
+                </ul>
+
+                <!-- 数据概览卡片 - 豪华升级版 -->
+        <div class="data-cards">
+            <div class="data-card" style="--delay: 0.1s;">
+                <div style="font-size: 36px; margin-bottom: 8px;">💰</div>
+                <div class="data-card-value">3,862</div>
+                <div class="data-card-label">2023年市场规模</div>
+                <div class="data-card-desc">单位：亿元</div>
+            </div>
+            <div class="data-card" style="--delay: 0.2s;">
+                <div style="font-size: 36px; margin-bottom: 8px;">📈</div>
+                <div class="data-card-value">5,800</div>
+                <div class="data-card-label">2030年预测</div>
+                <div class="data-card-desc">CAGR：~6.8%</div>
+            </div>
+            <div class="data-card" style="--delay: 0.3s;">
+                <div style="font-size: 36px; margin-bottom: 8px;">📱</div>
+                <div class="data-card-value">89.4%</div>
+                <div class="data-card-label">线上交易占比</div>
+                <div class="data-card-desc">数字化转型加速</div>
+            </div>
+            <div class="data-card" style="--delay: 0.4s;">
+                <div style="font-size: 36px; margin-bottom: 8px;">🏢</div>
+                <div class="data-card-value">42.7%</div>
+                <div class="data-card-label">运营商份额</div>
+                <div class="data-card-desc">市场主导地位</div>
+            </div>
+        </div>
+
+                <div class="stat-highlight">
+                    <strong><i class="fas fa-chart-line" style="color: #ff6600;"></i> 核心增长动力：</strong>数字人民币试点推动充值卡向"价值协议"跃迁，智能合约实现条件触发式自动履约
+                </div>
+
+                <!-- 增强的市场规模图表 -->
+                <div class="chart-container-enhanced">
+                    <div class="chart-header">
+                        <div class="chart-title-enhanced">中国在线话费充值市场交易额趋势(2018-2030)</div>
+                        <div class="chart-controls">
+                            <button class="chart-control-btn active" data-view="all" onclick="switchChartView('all')">全景</button>
+                            <button class="chart-control-btn" data-view="history" onclick="switchChartView('history')">历史</button>
+                            <button class="chart-control-btn" data-view="forecast" onclick="switchChartView('forecast')">预测</button>
+                        </div>
+                    </div>
+                    <canvas id="marketChartEnhanced"></canvas>
+                </div>
+                <p style="text-align: center; font-size: 12px; color: var(--text-tertiary); margin-top: 10px;">
+                    <i class="fas fa-info-circle"></i> 数据来源：工信部通信业统计公报、艾瑞咨询、易观分析2025-2030年行业报告
+                </p>
+
+                <p><strong>技术与生态优势</strong></p>
+                <ul class="wechat-list">
+                    <li>微信具备统一身份、支付、消息与社交分发的完整基础设施，无需额外用户授权</li>
+                    <li>小程序与服务通知能力完善，完美适配高频、轻决策的话费充值场景</li>
+                    <li>腾讯元宝深度融入微信生态，成为AI服务与用户之间的核心连接桥梁</li>
+                </ul>
+
+                <p><strong>前置调研核心痛点</strong></p>
+                <ul class="wechat-list">
+                    <li>操作路径冗长：充值平均点击≥<span class="stat-number">5<span class="stat-unit">次</span></span>，金额选择页转化率流失率达<span class="stat-number">65<span class="stat-unit">%</span></span>（核心原因：优惠/到账时效不清晰）</li>
+                    <li>用户分层痛点：
+                        <ul>
+                            <li>新用户：关注号码自动识别、失败退款、到账时效</li>
+                            <li>老用户：关注一键复购、自动充值、多号码管理</li>
+                        </ul>
+                    </li>
+                    <li>消息触达混乱：服务通知、模板消息、短信并行推送，用户投诉率月均增长<span class="stat-number">12<span class="stat-unit">%</span></span></li>
+                </ul>
+
+                <p><strong>立项目标</strong>：<span class="stat-number">3<span class="stat-unit">个</span></span>迭代周期（约<span class="stat-number">12<span class="stat-unit">周</span></span>内完成路径简化与智能化改造，形成可复制的增长闭环</p>
+
+                <p><strong>"更好体验"核心定义</strong></p>
+                <div class="ability-cards">
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-bolt"></i>效率跃升
+                        </div>
+                        <div class="ability-card-content">
+                            路径简化<span class="stat-number">70<span class="stat-unit">%</span></span>+，高价值用户充值时长从<span class="stat-number">1<span class="stat-unit">分钟</span></span>降至<span class="stat-number">10<span class="stat-unit">秒</span></span>内
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-brain"></i>认知减负
+                        </div>
+                        <div class="ability-card-content">
+                            零学习成本（支持口语化指令），AI主动提供决策辅助
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-heart"></i>情感化交互
+                        </div>
+                        <div class="ability-card-content">
+                            场景化主动关怀，支持语音/文本/图像多模态交互
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-expand-arrows-alt"></i>场景扩展性
+                        </div>
+                        <div class="ability-card-content">
+                            从单一充值扩展至家庭账户管理、套餐优化等增值服务
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 项目目标与衡量卡片 -->
+        <div class="wechat-card" id="section-2">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-chart-line"></i>2. 项目目标与衡量(KPI)
+                </div>
+                <button class="collapse-btn" data-target="section2-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section2-content">
+                <table class="wechat-table">
+                    <thead>
+                        <tr>
+                            <th>衡量维度</th>
+                            <th>目标层级</th>
+                            <th>核心指标</th>
+                            <th>当前基线</th>
+                            <th>12周目标</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="3">技术效能指标</td>
+                            <td>准确性</td>
+                            <td>意图识别准确率、决策正确性</td>
+                            <td>≥95%</td>
+                            <td>≥99%</td>
+                        </tr>
+                        <tr>
+                            <td>响应速度</td>
+                            <td>端到端耗时(秒)</td>
+                            <td>实时支付≤200ms，批量支付≤2秒</td>
+                            <td>提升10%（实时≤180ms）</td>
+                        </tr>
+                        <tr>
+                            <td>鲁棒性</td>
+                            <td>压力测试中错误率</td>
+                            <td>＜5%</td>
+                            <td>＜3%</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="3">业务价值指标</td>
+                            <td>交易成功率</td>
+                            <td>充值下单转化率(进入到支付)</td>
+                            <td>15%-30%</td>
+                            <td>≥40%</td>
+                        </tr>
+                        <tr>
+                            <td>重复使用率</td>
+                            <td>30日重复使用率</td>
+                            <td>0%</td>
+                            <td>≥80%</td>
+                        </tr>
+                        <tr>
+                            <td>服务质量</td>
+                            <td>充值成功率、到账时效达标率</td>
+                            <td>≥99.4%</td>
+                            <td>≥99.7%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- KPI对比图表（已修复当前基线缺失问题） -->
+                <div class="chart-container">
+                    <div class="chart-title">核心业务指标提升目标对比</div>
+                    <canvas id="kpiChart"></canvas>
+                </div>
+
+                <div class="wechat-tip">
+                    备注：所有指标均基于微信生态内话费充值场景，排除外部渠道干扰；数据统计周期为自然周，每周进行一次指标复盘
+                </div>
+
+                <p><strong>里程碑型指标</strong></p>
+                <div class="milestone-container">
+                    <div class="milestone">
+                        <div class="milestone-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="milestone-content">
+                            <div class="milestone-title">M1（第1-4周）：入口整合 + 号码自动识别上线</div>
+                            <div class="milestone-desc">完成基础功能优化，简化用户操作路径，将充值点击次数降至3次以内</div>
+                        </div>
+                    </div>
+                    <div class="milestone">
+                        <div class="milestone-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="milestone-content">
+                            <div class="milestone-title">M2（第5-8周）：对话式充值 & 智能推荐(Agent v1)灰度</div>
+                            <div class="milestone-desc">AI能力初步上线，实现基础对话交互，灰度用户转化率提升≥15%</div>
+                        </div>
+                    </div>
+                    <div class="milestone">
+                        <div class="milestone-icon future">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        <div class="milestone-content">
+                            <div class="milestone-title">M3（第9-12周）：自动充值订阅 + 运营增长体系跑通</div>
+                            <div class="milestone-desc">完善自动化能力，建立可持续增长模式，自动充值开通率≥30%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户洞察与分层卡片 -->
+        <div class="wechat-card" id="section-3">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-users"></i>3. 用户洞察与分层
+                </div>
+                <button class="collapse-btn" data-target="section3-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section3-content">
+                <!-- 用户占比图表 -->
+                <div class="chart-container">
+                    <div class="chart-title">目标用户群体占比分布</div>
+                    <canvas id="userChart"></canvas>
+                </div>
+
+                <div class="ability-cards">
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-user-graduate"></i>年轻用户(18-30岁)
+                        </div>
+                        <div class="ability-card-content">
+                            <strong>核心需求：</strong>自动化 > 趣味性 > 优惠<br>
+                            <strong>典型场景：</strong>游戏中"零感知"充值、短视频种草"一键即达"
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-briefcase"></i>商务人士(25-55岁)
+                        </div>
+                        <div class="ability-card-content">
+                            <strong>核心需求：</strong>效率 > 稳定性 > 多号管理<br>
+                            <strong>典型场景：</strong>紧急充值避免沟通中断、差旅匹配漫游套餐
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-home"></i>家庭用户(30-55岁)
+                        </div>
+                        <div class="ability-card-content">
+                            <strong>核心需求：</strong>优惠 > 批量操作 > 透明化<br>
+                            <strong>典型场景：</strong>家人批量代充、智能优化家庭套餐
+                        </div>
+                    </div>
+                </div>
+
+                <table class="wechat-table">
+                    <thead>
+                        <tr>
+                            <th>分析维度</th>
+                            <th>年轻用户(18-30岁)</th>
+                            <th>商务人士(25-55岁)</th>
+                            <th>家庭用户(30-55岁)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>人群画像</td>
+                            <td>• 新技术早期使用者<br>• 追求高效自动化<br>• 引领口碑传播<br>• 注重情感附加值</td>
+                            <td>• 时间高度敏感<br>• 操作路径需求短<br>• 消费能力强，价格不敏感<br>• 常移动办公需随时充值</td>
+                            <td>• 家庭通信支出管理者<br>• 价格敏感，关注优惠<br>• 需为多成员充值<br>• 希望优化家庭通信支出</td>
+                        </tr>
+                        <tr>
+                            <td>核心痛点</td>
+                            <td>• 厌恶手动操作<br>• 希望体验最新智能技术<br>• 需嵌入游戏/社交场景</td>
+                            <td>• 现有流程点击多<br>• 难快速找常用金额<br>• 多号码管理混乱<br>• 差旅易忘充值停机</td>
+                            <td>• 成员单独充值重复<br>• 难跟踪家人话费使用<br>• 无法选最优家庭套餐<br>• 优惠信息解读不全面</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- AI Agent设计卡片 -->
+        <div class="wechat-card" id="section-4">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-robot"></i>4. AI Agent 设计(充值智能体)
+                </div>
+                <button class="collapse-btn" data-target="section4-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section4-content">
+                <p><strong>4.1 定位</strong>："你的一站式充值管家"</p>
+                <ul class="wechat-list">
+                    <li><strong>第一阶段（1-8周）</strong>：对话式Chatbot，支持基础Agent操作（充值/查询/推荐）</li>
+                    <li><strong>第二阶段（9-12周）</strong>：适配微信大一统Agent，实现全流程自动化</li>
+                    <li>核心价值：主动读懂用户习惯与偏好，提供"更快、更划算、更智能、更省心"的充值服务</li>
+                </ul>
+
+                <p><strong>4.2 核心能力</strong></p>
+                <div style="display: flex; flex-wrap: wrap; margin-bottom: 16px;">
+                    <span class="tag tag-primary">全自动操作</span>
+                    <span class="tag tag-success">感知与预测</span>
+                    <span class="tag tag-warning">对话理解</span>
+                    <span class="tag tag-danger">个性化推荐</span>
+                    <span class="tag tag-primary">多模态交互</span>
+                    <span class="tag tag-success">安全风控</span>
+                </div>
+                
+                <div class="ability-cards">
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-cogs"></i>全自动操作
+                        </div>
+                        <div class="ability-card-content">
+                            授权后自动完成订单创建-支付-结果反馈，支持无感支付和一键撤销
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-eye"></i>感知与预测
+                        </div>
+                        <div class="ability-card-content">
+                            基于历史数据预测充值时间与金额，余额低于阈值时提前12小时提醒
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-comments"></i>对话理解
+                        </div>
+                        <div class="ability-card-content">
+                            解析复杂自然语言指令，支持语音/快捷指令/图片号码识别
+                        </div>
+                    </div>
+                    <div class="ability-card">
+                        <div class="ability-card-title">
+                            <i class="fas fa-shield-alt"></i>安全风控
+                        </div>
+                        <div class="ability-card-content">
+                            敏感操作二次验证，单日代扣金额上限500元，异常订单自动兜底退款
+                        </div>
+                    </div>
+                </div>
+
+                <p><strong>4.3 交互形态</strong></p>
+                <p><strong>4.3.1 原"手机充值"入口优化</strong></p>
+                <div class="wechat-tip">
+                    入口触发逻辑：点击"手机充值"后，右下角弹出客服气泡"您好，我是小微，请问您是否需要我帮您进行手机充值？"，配"是"（绿色）、"暂不需要"（灰色）按钮，无关闭控件
+                </div>
+                <p>主界面：关闭弹窗后保留原有功能（号码/金额选择/充流量等），新增"唤醒小微"按钮（带客服标识），点击弹出聊天窗口，支持文字/语音实时互动</p>
+
+                <p><strong>4.3.2 Agent专属入口</strong></p>
+                <ol class="wechat-list">
+                    <li><strong>主动触发式服务（用户驱动）</strong>：
+                        <p>文字/语音指令直接触发，核心支持场景：</p>
+                        <ul>
+                            <li>精准充值："给139XXXXXXXX充100元"</li>
+                            <li>套餐查询："本月套餐还剩多少流量/话费"</li>
+                            <li>业务办理："办理20元流量加油包"</li>
+                            <li>通用问答："话费充值后怎么开发票"</li>
+                        </ul>
+                    </li>
+                    <li><strong>选项引导式服务（元宝驱动）</strong>：
+                        <p>打开对话框或发送模糊指令后，弹出快捷菜单：</p>
+                        <div class="chat-container">
+                            <div class="chat-agent chat-message">
+                                <div class="chat-bubble">根据"充值话费"，为您推荐以下服务：<br>1. 一键充值（按默认设置充值/同额再充）<br>2. 套餐优化推荐（基于您的消费习惯）<br>3. 流量包选购（精准匹配您的使用需求）<br>4. 余额/用量查询<br>5. 管理我的设置<br>6. 更多服务</div>
+                            </div>
+                        </div>
+                    </li>
+                    <li><strong>自动化服务</strong>：
+                        <ul>
+                            <li>A. 半自动（一键按钮）：聊天底部常驻"一键充值（主号/家庭组合）""常用号码一键充值"快捷按钮</li>
+                            <li>B. 全自动（免密托管）：用户设置触发条件（如余额低于20元），系统实时监控并自动充值，仅推送结果通知</li>
+                        </ul>
+                    </li>
+                    <li><strong>智能推送式服务</strong>：每月1日推送月度账单报告、套餐优化建议、专属优惠（如"充100送5元"）</li>
+                    <li><strong>预警通知服务</strong>：余额低于阈值时弹窗提醒"⚠️ 你的话费余额已不足10元，点击【立即充值】或检查自动充值设置"</li>
+                </ol>
+
+                <p><strong>优化前后链路对比</strong></p>
+                <div class="comparison-container">
+                    <!-- 旧链路 -->
+                    <div class="comparison-side old">
+                        <div class="comparison-label">❌ 旧链路</div>
+                        <div class="comparison-title">传统手动充值</div>
+                        <div class="comparison-steps">
+                            <div class="comparison-step">
+                                <div class="step-number">1</div>
+                                <div class="step-text">打开微信 → 找到服务</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">2</div>
+                                <div class="step-text">进入手机充值</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">3</div>
+                                <div class="step-text">选择/输入手机号</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">4</div>
+                                <div class="step-text">选择充值金额</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">5</div>
+                                <div class="step-text">确认支付</div>
+                            </div>
+                        </div>
+                        <div class="comparison-summary">
+                            <div class="summary-value">60秒</div>
+                            <div class="summary-label">≥5步操作 · 耗时</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 新链路 -->
+                    <div class="comparison-side new">
+                        <div class="comparison-label">✅ 新链路</div>
+                        <div class="comparison-title">AI 智能充值</div>
+                        <div class="comparison-steps">
+                            <div class="comparison-step">
+                                <div class="step-number">1</div>
+                                <div class="step-text">对Agent说一句话</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">2</div>
+                                <div class="step-text">AI自动完成所有操作</div>
+                            </div>
+                            <div class="comparison-step">
+                                <div class="step-number">3</div>
+                                <div class="step-text">收到充值结果通知</div>
+                            </div>
+                        </div>
+                        <div class="comparison-summary">
+                            <div class="summary-value">10秒</div>
+                            <div class="summary-label">3步搞定 · 耗时</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-container">
+                    <div class="chat-user chat-message">
+                        <div class="chat-bubble">请帮我给主号充值50元</div>
+                        <div class="chat-time">11:06</div>
+                    </div>
+                    <div class="chat-agent chat-message">
+                        <div class="chat-bubble">好的，正在为您的主号充值50元，请稍等~</div>
+                        <div class="chat-time">11:06</div>
+                    </div>
+                    <div class="chat-agent chat-message">
+                        <div class="chat-bubble">已为您的主号183xxxxxxx充值50元<br>支付凭证：<a href="javascript:void(0)" style="color:var(--primary-color)">点击查看</a><br>请问您是否需要开通自动充值和套餐规划服务？</div>
+                        <div class="chat-time">11:06</div>
+                    </div>
+                </div>
+
+                <p><strong>4.4 技术与风控</strong></p>
+                <p><strong>4.4.1 套餐推荐模型</strong></p>
+                <ul class="wechat-list">
+                    <li>核心数据维度：号码属性、归属地、历史充值面额、充值频率、渠道偏好、Agent功能接受度</li>
+                    <li>核心技术栈：轻量预测模型（消费周期/方案排序）、风控规则模型、运营商API实时对接、数据分钟级更新</li>
+                    <li>知识储备：充值规则库、支付失败处理流程、PCI DSS支付安全标准、运营商套餐知识库</li>
+                </ul>
+
+                <p><strong>4.4.2 安全与合规预案（新增细则）</strong></p>
+                <ul class="wechat-list">
+                    <li>数据安全：遵循"存储最小化+匿名化"原则，仅存储必要的充值相关数据，明示授权范围与使用期限</li>
+                    <li>权限管控：敏感操作（代扣/代充）需二次确认+短信验证，单日代扣金额上限500元</li>
+                    <li>宣传合规：禁止使用"100%到账""包满意"等夸大话术，内置敏感词过滤系统</li>
+                    <li>异常处理：到账延迟＞10分钟自动触发申诉流程，失败订单自动兜底退款（最长1小时）</li>
+                    <li>边界管控：非充值相关业务（如金融、广告）拒绝回答，设置知识栅栏防止提示词注入</li>
+                    <li>隐私保护：用户可随时查看/删除/导出个人数据，支持一键注销Agent服务</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 运营策略卡片（已补全所有内容） -->
+        <div class="wechat-card" id="section-5">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-bullhorn"></i>5. 运营策略(拉新/促活/转化/留存/变现)
+                </div>
+                <button class="collapse-btn" data-target="section5-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section5-content">
+                <p><strong>5.1 渠道与分发</strong></p>
+                <ul class="wechat-list">
+                    <li><strong>站内核心渠道</strong>：
+                        <ul>
+                            <li>朋友圈精准投放Agent体验广告（定向高价值用户）</li>
+                            <li>旧充值入口增加"体验智能充值"引导按钮（占比30%视觉空间）</li>
+                            <li>Agent对话框主动唤起用户感知（首次使用送2元充值券）</li>
+                            <li>服务通知嵌入智能充值入口（账单日/余额低时）</li>
+                        </ul>
+                    </li>
+                    <li><strong>站外辅助渠道</strong>：小红书/抖音/快手发布"智能充值"体验短视频，重点突出"10秒充值"核心卖点</li>
+                </ul>
+
+                <p><strong>5.2 重点运营活动</strong></p>
+                <div style="display: flex; flex-wrap: wrap; margin-bottom: 16px;">
+                    <button class="wechat-btn" disabled>
+                        <i class="fas fa-gift"></i>新客礼：首充立减/免服务费
+                    </button>
+                    <button class="wechat-btn" disabled>
+                        <i class="fas fa-calendar-check"></i>会员日：充值满X返券/积分
+                    </button>
+                    <button class="wechat-btn" disabled>
+                        <i class="fas fa-redo"></i>自动充值返现：连续3期解锁高等级
+                    </button>
+                    <button class="wechat-btn" disabled>
+                        <i class="fas fa-file-invoice"></i>账单日：最优组合包推荐
+                    </button>
+                </div>
+                <div class="wechat-tip">
+                    活动规则：所有优惠券有效期7天，自动充值返现金额可累积，最高返现比例5%；会员日为每月15日，充值额外赠送10%积分（可兑换话费）
+                </div>
+
+                <p><strong>5.3 增长与留存机制</strong></p>
+                <ul class="wechat-list">
+                    <li>任务制成长体系：首充→复购→开通自动充值→多号管理→开通家庭会员（逐步解锁更高优惠）</li>
+                    <li>成就与权益：根据活跃等级解锁手续费优惠（最高免1元/笔）、专属优惠券、优先人工客服</li>
+                    <li>召回策略：
+                        <ul>
+                            <li>30天流失用户：赠送1元无门槛充值券+对话式召回脚本</li>
+                            <li>50天流失用户：赠送2元无门槛券+自动充值体验卡（7天）</li>
+                            <li>90天流失用户：赠送5元满减券+家庭充值礼包</li>
+                        </ul>
+                    </li>
+                    <li>口碑传播：邀请好友使用智能充值，双方各得3元充值券（好友完成首充后生效）</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 未来展望卡片 -->
+        <div class="wechat-card" id="section-6">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <i class="fas fa-rocket"></i>6. 未来展望
+                </div>
+                <button class="collapse-btn" data-target="section6-content">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-content" id="section6-content">
+                <p><strong>长期发展时间轴</strong></p>
+                <div class="timeline-container">
+                    <div class="timeline-item" data-year="2024">
+                        <div class="timeline-year">2024</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">项目启动 & 基础功能上线</div>
+                            <div class="timeline-desc">完成路径简化，实现号码自动识别，AI Agent v1.0灰度发布</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2025">
+                        <div class="timeline-year">2025</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">智能推荐体系完善</div>
+                            <div class="timeline-desc">全量发布AI Agent，实现个性化推荐，建立可持续增长模式</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2026">
+                        <div class="timeline-year">2026</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">生态扩展</div>
+                            <div class="timeline-desc">从话费充值扩展至流量包、套餐推荐等通信服务领域</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2027">
+                        <div class="timeline-year">2027</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">生活服务平台</div>
+                            <div class="timeline-desc">接入水电煤缴费、出行服务等，构建微信生活服务入口</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2028">
+                        <div class="timeline-year">2028</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">AI生态升级</div>
+                            <div class="timeline-desc">Agent 3.0上线，具备深度推理能力，可处理复杂生活场景问题</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2029">
+                        <div class="timeline-year">2029</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">开放平台成熟</div>
+                            <div class="timeline-desc">向第三方开发者开放API，形成完整的智能服务开发生态</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item" data-year="2030">
+                        <div class="timeline-year">2030</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">智慧生活平台</div>
+                            <div class="timeline-desc">成为微信生态内领先的AI生活服务平台，服务超过5亿用户</div>
+                        </div>
+                    </div>
+                </div>
+
+                <p style="margin-top: 24px;"><strong>核心展望</strong></p>
+                <ul class="wechat-list">
+                    <li><strong>Agent 2.0 升级</strong>：以话费充值为切入点，逐步扩展至购物/出行/吃饭/旅游等生活服务场景，构建微信AI生活管家生态</li>
+                    <li><strong>开放平台建设</strong>：对接运营商外的商家与权益方（如视频会员、电商优惠券），形成"充值+权益"的增值服务生态</li>
+                    <li><strong>数据智能化深化</strong>：从规则驱动过渡到模型驱动，基于用户全维度行为数据优化推荐精度与触达时机，提升转化效率</li>
+                    <li><strong>跨端体验统一</strong>：打通微信小程序、APP、PC端的Agent服务，实现多端数据同步、体验一致</li>
+                </ul>
+                <div class="wechat-tip" style="margin-top: 16px;">
+                    核心逻辑：话费充值具备"用户频率稳定、交易金额庞大、渠道成熟"的特点，是培养用户AI Agent使用习惯的最佳场景，可为后续生态扩展奠定核心用户基础。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 滚动进度条 -->
+    <div class="scroll-progress" id="scrollProgress"></div>
+
+    <!-- 返回顶部按钮 -->
+    <div class="scroll-indicator" id="scrollToTop" title="返回顶部">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <!-- 粒子效果容器 -->
+    <div class="particles" id="particles"></div>
+
+    <!-- 遮罩层 -->
+    <div class="popup-overlay" id="popupOverlay"></div>
+    
+    <!-- 底部弹窗（模拟Agent交互） -->
+    <div class="wechat-popup" id="agentPopup">
+        <div class="popup-header">
+            小微为您服务
+            <button class="popup-close" onclick="closePopup()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="chat-container" id="popupChat">
+            <div class="chat-agent chat-message">
+                <div class="chat-bubble">您好！我是您的充值管家小微，需要帮您查询话费余额或充值吗？</div>
+            </div>
+        </div>
+        <div class="popup-btns">
+            <button class="wechat-btn gray" onclick="closePopup()">暂不需要</button>
+            <button class="wechat-btn" onclick="startService()">需要充值</button>
+        </div>
+    </div>
+
+    <!-- 分享弹窗 -->
+    <div class="wechat-popup" id="sharePopup">
+        <div class="popup-header">
+            分享方案
+            <button class="popup-close" onclick="closeSharePopup()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="text-align: center; padding: 20px 0;">
+            <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 20px;">
+                <div style="text-align: center;">
+                    <div style="width: 60px; height: 60px; background-color: #07c160; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                        <i class="fab fa-weixin" style="font-size: 30px; color: white;"></i>
+                    </div>
+                    <span>微信好友</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 60px; height: 60px; background-color: #07c160; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                        <i class="fas fa-qrcode" style="font-size: 30px; color: white;"></i>
+                    </div>
+                    <span>二维码</span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="width: 60px; height: 60px; background-color: #007aff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                        <i class="fas fa-link" style="font-size: 30px; color: white;"></i>
+                    </div>
+                    <span>复制链接</span>
+                </div>
+            </div>
+            <button class="wechat-btn" onclick="closeSharePopup()">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let marketChart, kpiChart, userChart;
+        
+        // 页面加载完成后执行
+        window.addEventListener('load', () => {
+            // 先隐藏加载动画，确保页面能显示
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+                
+                // 尝试初始化图表，添加错误处理
+                try {
+                    initCharts();
+                } catch (e) {
+                    console.log('图表初始化失败:', e);
+                }
+            }, 500);
+            
+            // 5秒后弹出Agent弹窗
+            setTimeout(function() {
+                try {
+                    document.getElementById('agentPopup').classList.add('show');
+                    document.getElementById('popupOverlay').classList.add('show');
+                } catch (e) {
+                    console.log('弹窗显示失败:', e);
+                }
+            }, 5000);
+        });
+
+        // 深色模式切换
+        const darkModeBtn = document.getElementById('darkModeBtn');
+        darkModeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const icon = darkModeBtn.querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                // 更新图表颜色
+                try {
+                    updateChartsForDarkMode();
+                    if (marketChartEnhanced) updateEnhancedChartTheme(true);
+                } catch (e) {}
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                // 更新图表颜色
+                try {
+                    updateChartsForLightMode();
+                } catch (e) {}
+            }
+        });
+
+        // 打印功能
+        const printBtn = document.getElementById('printBtn');
+        printBtn.addEventListener('click', () => {
+            window.print();
+        });
+
+        // 分享功能
+        const shareBtn = document.getElementById('shareBtn');
+        const sharePopup = document.getElementById('sharePopup');
+        shareBtn.addEventListener('click', () => {
+            sharePopup.classList.add('show');
+            popupOverlay.classList.add('show');
+        });
+        function closeSharePopup() {
+            sharePopup.classList.remove('show');
+            popupOverlay.classList.remove('show');
+        }
+
+        // 弹窗控制
+        const agentPopup = document.getElementById('agentPopup');
+        const popupOverlay = document.getElementById('popupOverlay');
+        const popupChat = document.getElementById('popupChat');
+
+        // 关闭弹窗
+        function closePopup() {
+            agentPopup.classList.remove('show');
+            popupOverlay.classList.remove('show');
+        }
+
+        // 开始服务（模拟对话）
+        function startService() {
+            // 清空原有按钮防止重复点击
+            document.querySelector('.popup-btns').innerHTML = '<button class="wechat-btn" disabled><i class="fas fa-spinner fa-spin"></i> 处理中...</button>';
+            
+            // 添加用户消息
+            popupChat.innerHTML += `
+                <div class="chat-user chat-message">
+                    <div class="chat-bubble">帮我给主号充50元</div>
+                </div>
+                <div class="chat-agent chat-message">
+                    <div class="chat-bubble">好的，正在为您的主号183xxxxxxx充值50元，已自动为您匹配当前最优优惠，预计10秒内到账~</div>
+                </div>
+            `;
+            popupChat.scrollTop = popupChat.scrollHeight;
+            
+            // 模拟到账延迟
+            setTimeout(() => {
+                popupChat.innerHTML += `
+                    <div class="chat-agent chat-message">
+                        <div class="chat-bubble">已为您的主号183xxxxxxx成功充值50元，当前余额127.5元。<br>支付凭证：<a href="javascript:void(0)" style="color:#ffffff">点击查看</a><br>是否需要开启自动充值功能，避免余额不足？</div>
+                    </div>
+                `;
+                popupChat.scrollTop = popupChat.scrollHeight;
+                
+                // 更新按钮
+                document.querySelector('.popup-btns').innerHTML = `
+                    <button class="wechat-btn gray" onclick="closePopup()">暂不开启</button>
+                    <button class="wechat-btn" onclick="closePopup()">立即开启</button>
+                `;
+            }, 2000);
+        }
+        
+        // 点击遮罩层关闭弹窗
+        popupOverlay.addEventListener('click', () => {
+            closePopup();
+            closeSharePopup();
+        });
+
+        // 返回顶部按钮控制
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        });
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // 侧边导航锚点跳转
+        const navItems = document.querySelectorAll('.side-nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // 移除所有active状态
+                navItems.forEach(nav => nav.classList.remove('active'));
+                // 添加当前active状态
+                item.classList.add('active');
+                // 跳转至目标区域
+                const targetId = item.getAttribute('data-target');
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 滚动时更新导航active状态
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('.wechat-card');
+            let currentSection = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.scrollY >= (sectionTop - 100)) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-target') === currentSection) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // 折叠/展开功能
+        const collapseBtns = document.querySelectorAll('.collapse-btn');
+        collapseBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const targetContent = document.getElementById(targetId);
+                const icon = btn.querySelector('i');
+                
+                targetContent.classList.toggle('collapsed');
+                icon.classList.toggle('rotated');
+            });
+        });
+
+        // 全局图表实例
+        let marketChartEnhanced;
+        let currentChartView = 'all';
+        
+        // 初始化图表（添加错误处理）
+        function initCharts() {
+            // 增强的市场规模图表（2018-2030）
+            initEnhancedMarketChart();
+
+            // 保持原有图表兼容
+            if (document.getElementById('marketChart')) {
+                const marketCtx = document.getElementById('marketChart').getContext('2d');
+                marketChart = new Chart(marketCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['2021', '2022', '2023', '2024', '2025(预测)'],
+                        datasets: [{
+                            label: '市场交易额(万亿元)',
+                            data: [0.89, 0.95, 1.02, 1.08, 1.15],
+                            borderColor: '#07c160',
+                            backgroundColor: 'rgba(7, 193, 96, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '市场交易额: ' + context.raw + ' 万亿元';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 0.8,
+                                max: 1.2,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
+                                ticks: {
+                                    color: '#666',
+                                    padding: 10,
+                                    font: {
+                                        size: 12
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                        },
+                                        ticks: {
+                                            color: '#666',
+                                            padding: 10,
+                                            font: {
+                                                size: 12
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+
+            // KPI对比图表（已修复当前基线缺失问题）
+            const kpiCtx = document.getElementById('kpiChart').getContext('2d');
+            kpiChart = new Chart(kpiCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['转化率', '30日重复使用率', '充值成功率'],
+                    datasets: [{
+                        label: '当前基线',
+                        data: [22.5, 45, 99.4],
+                        backgroundColor: 'rgba(0, 0, 0, 0.1)'
+                    }, {
+                        label: '12周目标',
+                        data: [40, 80, 99.7],
+                        backgroundColor: '#07c160'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#666',
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                color: '#666',
+                                padding: 10,
+                                font: {
+                                    size: 12
+                                },
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#666',
+                                padding: 10,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 用户占比图表
+            const userCtx = document.getElementById('userChart').getContext('2d');
+            userChart = new Chart(userCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['年轻用户(18-30岁)', '商务人士(25-55岁)', '家庭用户(30-55岁)'],
+                    datasets: [{
+                        data: [45, 30, 25],
+                        backgroundColor: ['#07c160', '#1890ff', '#fa8c16'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#666',
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.raw + '%';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        // 更新图表为深色模式
+        function updateChartsForDarkMode() {
+            if (marketChart) {
+                marketChart.options.scales.y.grid.color = 'rgba(255, 255, 255, 0.1)';
+                marketChart.options.scales.y.ticks.color = '#b0b0b0';
+                marketChart.options.scales.x.ticks.color = '#b0b0b0';
+                marketChart.update();
+            }
+            if (kpiChart) {
+                kpiChart.options.plugins.legend.labels.color = '#b0b0b0';
+                kpiChart.options.scales.y.grid.color = 'rgba(255, 255, 255, 0.1)';
+                kpiChart.options.scales.y.ticks.color = '#b0b0b0';
+                kpiChart.options.scales.x.ticks.color = '#b0b0b0';
+                kpiChart.update();
+            }
+            if (userChart) {
+                userChart.options.plugins.legend.labels.color = '#b0b0b0';
+                userChart.update();
+            }
+        }
+
+        // 更新图表为浅色模式
+        function updateChartsForLightMode() {
+            if (marketChart) {
+                marketChart.options.scales.y.grid.color = 'rgba(0, 0, 0, 0.05)';
+                marketChart.options.scales.y.ticks.color = '#666';
+                marketChart.options.scales.x.ticks.color = '#666';
+                marketChart.update();
+            }
+            if (kpiChart) {
+                kpiChart.options.plugins.legend.labels.color = '#666';
+                kpiChart.options.scales.y.grid.color = 'rgba(0, 0, 0, 0.05)';
+                kpiChart.options.scales.y.ticks.color = '#666';
+                kpiChart.options.scales.x.ticks.color = '#666';
+                kpiChart.update();
+            }
+            if (userChart) {
+                userChart.options.plugins.legend.labels.color = '#666';
+                userChart.update();
+            }
+            if (marketChartEnhanced) {
+                updateEnhancedChartTheme(false);
+            }
+        }
+
+        // 更新增强图表主题
+        function updateEnhancedChartTheme(isDark) {
+            if (!marketChartEnhanced) return;
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+            const xGridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)';
+            const tickColor = isDark ? '#c0c0c0' : '#555';
+            const legendColor = isDark ? '#c0c0c0' : '#666';
+            const borderColor = isDark ? 'rgba(255, 255, 255, 0.2)' : '#ddd';
+            
+            marketChartEnhanced.options.scales.y.grid.color = gridColor;
+            marketChartEnhanced.options.scales.y.grid.borderColor = borderColor;
+            marketChartEnhanced.options.scales.y.border.color = borderColor;
+            marketChartEnhanced.options.scales.y.ticks.color = tickColor;
+            
+            marketChartEnhanced.options.scales.x.grid.color = xGridColor;
+            marketChartEnhanced.options.scales.x.grid.borderColor = borderColor;
+            marketChartEnhanced.options.scales.x.border.color = borderColor;
+            marketChartEnhanced.options.scales.x.ticks.color = tickColor;
+            
+            marketChartEnhanced.options.plugins.legend.labels.color = legendColor;
+            marketChartEnhanced.update();
+        }
+
+        // 初始化增强市场图表
+        function initEnhancedMarketChart() {
+            console.log('开始初始化增强市场图表...');
+            const ctx = document.getElementById('marketChartEnhanced');
+            if (!ctx) {
+                console.log('找不到增强市场图表canvas元素');
+                return;
+            }
+            console.log('找到增强市场图表canvas元素:', ctx);
+            
+            // 完整数据：2018-2030
+            const allLabels = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030'];
+            const allData = [1.86, 2.05, 1.98, 2.35, 2.68, 3.862, 4.21, 4.45, 4.78, 5.02, 5.35, 5.58, 5.80];
+            const isForecast = [false, false, false, false, false, false, false, true, true, true, true, true, true];
+            
+            console.log('准备创建Chart实例...');
+            try {
+                const ctx2d = ctx.getContext('2d');
+                marketChartEnhanced = new Chart(ctx2d, {
+                    type: 'line',
+                    data: {
+                        labels: allLabels,
+                        datasets: [{
+                            label: '市场交易额(千亿元)',
+                            data: allData,
+                            borderColor: '#07c160',
+                            backgroundColor: 'rgba(7, 193, 96, 0.15)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 6,
+                            pointHoverRadius: 10,
+                            pointBackgroundColor: function(context) {
+                                return context.dataIndex >= 7 ? '#fa8c16' : '#07c160';
+                            },
+                            pointBorderWidth: 2,
+                            pointBorderColor: '#fff',
+                            borderWidth: 3,
+                            segment: {
+                                borderDash: function(context) {
+                                    const index = context.p0DataIndex;
+                                    return index >= 6 ? [5, 5] : [];
+                                }
+                            }
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeInOutQuart'
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        layout: {
+                        padding: {
+                            top: 20,
+                            right: 25,
+                            bottom: 50,
+                            left: 15
+                        }
+                    },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#666',
+                                    padding: 20,
+                                    font: {
+                                        size: 14,
+                                        weight: '600'
+                                    },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const year = allLabels[context.dataIndex];
+                                        const value = context.raw;
+                                        const forecast = isForecast[context.dataIndex] ? ' (预测)' : '';
+                                        return `市场交易额: ${value} 千亿元${forecast}`;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.dataIndex > 0) {
+                                            const prev = allData[context.dataIndex - 1];
+                                            const curr = allData[context.dataIndex];
+                                            const growth = ((curr - prev) / prev * 100).toFixed(1);
+                                            const arrow = growth >= 0 ? '↑' : '↓';
+                                            return `同比变化: ${arrow} ${Math.abs(growth)}%`;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                display: true,
+                                beginAtZero: false,
+                                min: 1.5,
+                                max: 6.5,
+                                grid: {
+                                    display: true,
+                                    color: 'rgba(0, 0, 0, 0.08)',
+                                    drawBorder: true,
+                                    borderColor: '#e5e5e5'
+                                },
+                                ticks: {
+                                    display: true,
+                                    color: '#555',
+                                    padding: 12,
+                                    font: {
+                                        size: 12,
+                                        weight: '500'
+                                    },
+                                    callback: function(value) {
+                                        return value + ' 千亿';
+                                    },
+                                    maxRotation: 0,
+                                    minRotation: 0,
+                                    autoSkip: false
+                                },
+                                border: {
+                                    display: true,
+                                    color: '#ddd'
+                                }
+                            },
+                            x: {
+                                display: true,
+                                grid: {
+                                    display: true,
+                                    color: 'rgba(0, 0, 0, 0.03)',
+                                    drawBorder: true,
+                                    borderColor: '#e5e5e5'
+                                },
+                                ticks: {
+                                    display: true,
+                                    color: '#555',
+                                    padding: 12,
+                                    font: {
+                                        size: 13,
+                                        weight: '600'
+                                    },
+                                    maxRotation: 45,
+                                    minRotation: 0,
+                                    autoSkip: false,
+                                    maxTicksLimit: 13
+                                },
+                                border: {
+                                    display: true,
+                                    color: '#ddd'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('增强市场图表创建成功！');
+            } catch (error) {
+                console.error('创建增强市场图表失败:', error);
+            }
+        }
+
+        // 切换图表视图
+        function switchChartView(view) {
+            currentChartView = view;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.chart-control-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.view === view) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            if (!marketChartEnhanced) return;
+            
+            const allLabels = ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030'];
+            const allData = [1.86, 2.05, 1.98, 2.35, 2.68, 3.862, 4.21, 4.45, 4.78, 5.02, 5.35, 5.58, 5.80];
+            
+            let labels, data, min, max;
+            
+            switch(view) {
+                case 'history':
+                    labels = allLabels.slice(0, 7);
+                    data = allData.slice(0, 7);
+                    min = 1.5;
+                    max = 4.5;
+                    break;
+                case 'forecast':
+                    labels = allLabels.slice(6);
+                    data = allData.slice(6);
+                    min = 3.5;
+                    max = 6.5;
+                    break;
+                default: // all
+                    labels = allLabels;
+                    data = allData;
+                    min = 1.5;
+                    max = 6.5;
+            }
+            
+            marketChartEnhanced.data.labels = labels;
+            marketChartEnhanced.data.datasets[0].data = data;
+            marketChartEnhanced.options.scales.y.min = min;
+            marketChartEnhanced.options.scales.y.max = max;
+            marketChartEnhanced.update('active');
+        }
+
+        // ============== 新增交互功能 ==============
+
+        // 1. 滚动进度条
+        function updateScrollProgress() {
+            const scrollProgress = document.getElementById('scrollProgress');
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = scrollTop / docHeight;
+            scrollProgress.style.transform = `scaleX(${scrollPercent})`;
+        }
+        window.addEventListener('scroll', updateScrollProgress);
+
+        // 2. 返回顶部按钮
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // 显示/隐藏返回顶部按钮
+        function toggleScrollToTop() {
+            if (window.scrollY > 300) {
+                scrollToTopBtn.style.opacity = '1';
+                scrollToTopBtn.style.pointerEvents = 'auto';
+            } else {
+                scrollToTopBtn.style.opacity = '0';
+                scrollToTopBtn.style.pointerEvents = 'none';
+            }
+        }
+        window.addEventListener('scroll', toggleScrollToTop);
+        toggleScrollToTop();
+
+        // 3. 时间轴滚动动画
+        function animateTimeline() {
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            timelineItems.forEach((item, index) => {
+                const rect = item.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.8) {
+                    setTimeout(() => {
+                        item.classList.add('animate');
+                    }, index * 150);
+                }
+            });
+        }
+        window.addEventListener('scroll', animateTimeline);
+        animateTimeline();
+
+        // 4. 时间轴点击展开详情
+        document.querySelectorAll('.timeline-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const title = this.querySelector('.timeline-title').textContent;
+                const desc = this.querySelector('.timeline-desc').textContent;
+                const year = this.querySelector('.timeline-year').textContent;
+                
+                // 简单的点击反馈动画
+                this.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 200);
+            });
+        });
+
+        // 5. 粒子效果
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 20;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.opacity = Math.random() * 0.5 + 0.1;
+                particle.style.animationDelay = Math.random() * 10 + 's';
+                particlesContainer.appendChild(particle);
+                animateParticle(particle);
+            }
+        }
+
+        function animateParticle(particle) {
+            let x = parseFloat(particle.style.left);
+            let y = parseFloat(particle.style.top);
+            let vx = (Math.random() - 0.5) * 0.5;
+            let vy = (Math.random() - 0.5) * 0.5;
+
+            function move() {
+                x += vx;
+                y += vy;
+
+                if (x < 0 || x > 100) vx *= -1;
+                if (y < 0 || y > 100) vy *= -1;
+
+                particle.style.left = x + '%';
+                particle.style.top = y + '%';
+                requestAnimationFrame(move);
+            }
+            move();
+        }
+        createParticles();
+
+        // 6. 数字计数动画（用于数据卡片）
+        function animateCounter(element, target, duration = 2000) {
+            let start = 0;
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+                const current = Math.floor(easeOutQuart * target);
+                element.textContent = current;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            requestAnimationFrame(update);
+        }
+
+        // 7. 键盘快捷键支持
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Home') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            if (e.key === 'End') {
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }
+            if (e.key === 'd' && e.ctrlKey) {
+                e.preventDefault();
+                darkModeBtn.click();
+            }
+        });
+
+        // 8. 鼠标跟随效果（可选，轻量级）
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // 9. 页面加载完成后的入场动画
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s ease';
+            requestAnimationFrame(() => {
+                document.body.style.opacity = '1';
+            });
+        });
+    </script>
+</body>
+</html>
