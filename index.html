@@ -173,7 +173,8 @@
             box-shadow: var(--shadow-md);
             padding: 8px 0;
             width: 60px;
-            display: none;
+            display: flex;
+            flex-direction: column;
             transition: background-color var(--transition-normal), box-shadow var(--transition-normal);
         }
         .side-nav-item {
@@ -2459,22 +2460,8 @@
             closeSharePopup();
         });
 
-        // 返回顶部按钮控制
-        const backToTop = document.getElementById('backToTop');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 300) {
-                backToTop.classList.add('show');
-            } else {
-                backToTop.classList.remove('show');
-            }
-        });
-        backToTop.addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
-
+        // 返回顶部按钮控制（已移除，保留代码用于参考）
+        
         // 侧边导航锚点跳转
         const navItems = document.querySelectorAll('.side-nav-item');
         navItems.forEach(item => {
